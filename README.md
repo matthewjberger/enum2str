@@ -12,7 +12,7 @@ This is useful for strongly typing composable sets of strings.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.0"
+enum2str = "0.1.2"
 ```
 
 Example:
@@ -22,7 +22,7 @@ use enum2str::EnumStr;
 
 #[derive(EnumStr)]
 enum Object {
-    Simple,
+    Generic(String),
 
     #[enum2str("Color: {}. Shape: {}.")]
     Complex(Color, Shape),
@@ -30,9 +30,9 @@ enum Object {
 
 #[derive(EnumStr)]
 enum Color {
+    #[enum2str("Burgundy")]
     Red,
     Green,
-    SlateGray,
 }
 
 #[derive(EnumStr)]
@@ -40,15 +40,16 @@ enum Shape {
     Circle,
 }
 
-#[test]
-fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    assert_eq!(Object::Simple.to_string(), "Simple");
+fn main() {
+    assert_eq!(Color::Green.to_string(), "Green");
+
+    assert_eq!(Color::Red.to_string(), "Burgundy");
+
+    assert_eq!(Object::Generic("Hello!".to_string()).to_string(), "Hello!");
+
     assert_eq!(
         Object::Complex(Color::Green, Shape::Circle).to_string(),
         "Color: Green. Shape: Circle."
     );
-    assert_eq!(Color::Red.to_string(), "Red");
-    assert_eq!(Color::SlateGray.to_string(), "SlateGray");
-    Ok(())
 }
 ```

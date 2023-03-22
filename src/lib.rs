@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, FieldsUnnamed};
 
 macro_rules! derive_error {
@@ -29,21 +29,36 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
 
         match variant.fields {
             Fields::Unit => {
-                match_arms.extend(quote_spanned! {
-                    variant.span() =>
-                        #name::#variant_name => write!(f, "{}", stringify!(#variant_name)),
-                });
-            }
-            Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
-                let mut format_ident = None;
+                let mut display_ident = "{}".to_string().to_token_stream();
 
                 for attr in &variant.attrs {
                     if attr.path.is_ident("enum2str") && attr.path.segments.first().is_some() {
                         match attr.parse_args::<syn::LitStr>() {
-                            Ok(literal) => format_ident = Some(literal),
+                            Ok(literal) => display_ident = literal.to_token_stream(),
                             Err(_) => {
                                 return derive_error!(
-                                    r#"The 'enum2str' attribute is required.. Example: #[enum2str("Listening on: {} {}")] "#
+                                    r#"The 'enum2str' attribute is missing a String argument. Example: #[enum2str("Listening on: {} {}")] "#
+                                );
+                            }
+                        }
+                    }
+                }
+
+                match_arms.extend(quote_spanned! {
+                    variant.span() =>
+                        #name::#variant_name =>  write!(f, "{}", stringify!(#display_ident)),
+                });
+            }
+            Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
+                let mut format_ident = "{}".to_string().to_token_stream();
+
+                for attr in &variant.attrs {
+                    if attr.path.is_ident("enum2str") && attr.path.segments.first().is_some() {
+                        match attr.parse_args::<syn::LitStr>() {
+                            Ok(literal) => format_ident = literal.to_token_stream(),
+                            Err(_) => {
+                                return derive_error!(
+                                    r#"The 'enum2str' attribute is missing a String argument. Example: #[enum2str("Listening on: {} {}")] "#
                                 );
                             }
                         }
@@ -56,7 +71,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     .map(|letter| Ident::new(&letter.to_string(), variant.span()))
                     .collect::<Vec<_>>();
                 match_arms.extend(quote_spanned! {
-                    variant.span() => #name::#variant_name(#(#args),*) =>  write!(f, #format_ident, #(#args),*)
+                    variant.span() => #name::#variant_name(#(#args),*) =>  write!(f, #format_ident, #(#args),*),
                 });
             }
             _ => {
