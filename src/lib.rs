@@ -1,10 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
-use quote::{format_ident, quote, quote_spanned, ToTokens};
-use syn::{
-    parse_macro_input, parse_quote, spanned::Spanned, Data, DeriveInput, Error, Fields,
-    FieldsUnnamed, Lit, LitStr, Meta, MetaNameValue,
-};
+use quote::{quote, quote_spanned};
+use syn::{parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, FieldsUnnamed};
 
 macro_rules! derive_error {
     ($string: tt) => {
@@ -18,9 +15,8 @@ macro_rules! derive_error {
 pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input as DeriveInput);
 
-    let ref name = input.ident;
+    let name = &input.ident;
 
-    // Ensure the derive macro is applied to an enum
     let data = match input.data {
         Data::Enum(data) => data,
         _ => return derive_error!("enum2str only supports enums"),
@@ -29,7 +25,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     let mut match_arms = TokenStream2::new();
 
     for variant in data.variants.iter() {
-        let ref variant_name = variant.ident;
+        let variant_name = &variant.ident;
 
         match variant.fields {
             Fields::Unit => {
@@ -42,22 +38,20 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                 let mut format_ident = None;
 
                 for attr in &variant.attrs {
-                    if attr.path.is_ident("enum2str") {
-                        if attr.path.segments.first().is_some() {
-                            match attr.parse_args::<syn::LitStr>() {
-                                Ok(literal) => format_ident = Some(literal),
-                                Err(_) => {
-                                    return derive_error!(
-                                        r#"The 'enum2str' attribute is required.. Example: #[enum2str("Listening on: {} {}")] "#
-                                    );
-                                }
+                    if attr.path.is_ident("enum2str") && attr.path.segments.first().is_some() {
+                        match attr.parse_args::<syn::LitStr>() {
+                            Ok(literal) => format_ident = Some(literal),
+                            Err(_) => {
+                                return derive_error!(
+                                    r#"The 'enum2str' attribute is required.. Example: #[enum2str("Listening on: {} {}")] "#
+                                );
                             }
                         }
                     }
                 }
 
                 let fields = unnamed.iter().len();
-                let args = ('a'..'z')
+                let args = ('a'..='z')
                     .take(fields)
                     .map(|letter| Ident::new(&letter.to_string(), variant.span()))
                     .collect::<Vec<_>>();
