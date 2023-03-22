@@ -20,26 +20,35 @@ Example:
 ```rust
 use enum2str::EnumStr;
 
-#[derive(EnumStr, Debug, PartialEq, Copy, Clone)]
+#[derive(EnumStr)]
+enum Object {
+    Simple,
+
+    #[enum2str("Color: {}. Shape: {}.")]
+    Complex(Color, Shape),
+}
+
+#[derive(EnumStr)]
 enum Color {
     Red,
-    Green(Green),
+    Green,
     SlateGray,
 }
 
-#[derive(EnumStr, Debug, PartialEq, Copy, Clone)]
-enum Green {
-    Emerald,
-    Forest,
-    Mint,
-    Olive,
-    Sage,
+#[derive(EnumStr)]
+enum Shape {
+    Circle,
 }
 
+#[test]
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
+    assert_eq!(Object::Simple.to_string(), "Simple");
+    assert_eq!(
+        Object::Complex(Color::Green, Shape::Circle).to_string(),
+        "Color: Green. Shape: Circle."
+    );
     assert_eq!(Color::Red.to_string(), "Red");
-    assert_eq!(Color::Green(Green::Emerald).to_string(), "Green Emerald");
-    assert_eq!(Color::SlateGray.to_string(), "Slate Gray");
+    assert_eq!(Color::SlateGray.to_string(), "SlateGray");
     Ok(())
 }
 ```
