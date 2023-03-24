@@ -67,3 +67,21 @@ fn nested_template() {
         "Color: {}. Shape: {}."
     );
 }
+
+#[test]
+fn unit_number_of_args() {
+    assert_eq!(Color::Green.number_of_args(), 0);
+}
+
+#[test]
+fn unnamed_number_of_args() {
+    assert_eq!(Object::Generic("Hello!".to_string()).number_of_args(), 1);
+}
+
+#[test]
+fn complex_number_of_args() {
+    assert_eq!(
+        Object::Complex(Color::Green, Shape::Circle(2)).number_of_args(),
+        2
+    );
+}
