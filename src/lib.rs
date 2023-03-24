@@ -29,7 +29,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
 
         match variant.fields {
             Fields::Unit => {
-                let mut display_ident = "{}".to_string().to_token_stream();
+                let mut display_ident = variant_name.to_string().to_token_stream();
 
                 for attr in &variant.attrs {
                     if attr.path.is_ident("enum2str") && attr.path.segments.first().is_some() {
@@ -46,7 +46,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
 
                 match_arms.extend(quote_spanned! {
                     variant.span() =>
-                        #name::#variant_name =>  write!(f, "{}", stringify!(#display_ident)),
+                        #name::#variant_name =>  write!(f, "{}", #display_ident),
                 });
             }
             Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
