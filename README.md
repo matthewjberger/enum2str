@@ -12,7 +12,7 @@ This is useful for strongly typing composable sets of strings.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.3"
+enum2str = "0.1.4"
 ```
 
 Example:
@@ -30,26 +30,61 @@ enum Object {
 
 #[derive(EnumStr)]
 enum Color {
+    Green,
+
     #[enum2str("Burgundy")]
     Red,
-    Green,
 }
 
 #[derive(EnumStr)]
 enum Shape {
-    Circle,
+    #[enum2str("Circle with radius: {}")]
+    Circle(u8),
 }
 
-fn main() {
+#[test]
+fn unit_to_string() {
     assert_eq!(Color::Green.to_string(), "Green");
+}
 
+#[test]
+fn unit_override_string() {
     assert_eq!(Color::Red.to_string(), "Burgundy");
+}
 
+#[test]
+fn unnamed_to_string() {
     assert_eq!(Object::Generic("Hello!".to_string()).to_string(), "Hello!");
+}
 
+#[test]
+fn nested_to_string() {
     assert_eq!(
-        Object::Complex(Color::Green, Shape::Circle).to_string(),
-        "Color: Green. Shape: Circle."
+        Object::Complex(Color::Green, Shape::Circle(2)).to_string(),
+        "Color: Green. Shape: Circle with radius: 2."
+    );
+}
+
+#[test]
+fn unit_template() {
+    assert_eq!(Color::Green.template(), "Green");
+}
+
+#[test]
+fn unit_override_template() {
+    assert_eq!(Color::Red.template(), "Burgundy");
+}
+
+#[test]
+fn unnamed_template() {
+    assert_eq!(Shape::Circle(2).template(), "Circle with radius: {}");
+}
+
+#[test]
+fn nested_template() {
+    assert_eq!(
+        Object::Complex(Color::Green, Shape::Circle(2)).template(),
+        "Color: {}. Shape: {}."
     );
 }
 ```

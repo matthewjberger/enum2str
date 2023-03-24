@@ -1,7 +1,9 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned, ToTokens};
-use syn::{parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, FieldsUnnamed};
+use syn::{
+    parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, FieldsUnnamed, LitStr,
+};
 
 macro_rules! derive_error {
     ($string: tt) => {
@@ -10,7 +12,6 @@ macro_rules! derive_error {
             .into()
     };
 }
-
 #[proc_macro_derive(EnumStr, attributes(enum2str))]
 pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input as DeriveInput);
@@ -23,6 +24,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     };
 
     let mut match_arms = TokenStream2::new();
+    let mut template_arms = TokenStream2::new();
 
     for variant in data.variants.iter() {
         let variant_name = &variant.ident;
@@ -34,7 +36,9 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                 for attr in &variant.attrs {
                     if attr.path.is_ident("enum2str") && attr.path.segments.first().is_some() {
                         match attr.parse_args::<syn::LitStr>() {
-                            Ok(literal) => display_ident = literal.to_token_stream(),
+                            Ok(literal) => {
+                                display_ident = literal.to_token_stream();
+                            }
                             Err(_) => {
                                 return derive_error!(
                                     r#"The 'enum2str' attribute is missing a String argument. Example: #[enum2str("Listening on: {} {}")] "#
@@ -48,13 +52,18 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     variant.span() =>
                         #name::#variant_name =>  write!(f, "{}", #display_ident),
                 });
+
+                template_arms.extend(quote_spanned! {
+                    variant.span() =>
+                        #name::#variant_name => #display_ident.to_string(),
+                });
             }
             Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
                 let mut format_ident = "{}".to_string().to_token_stream();
 
                 for attr in &variant.attrs {
                     if attr.path.is_ident("enum2str") && attr.path.segments.first().is_some() {
-                        match attr.parse_args::<syn::LitStr>() {
+                        match attr.parse_args::<LitStr>() {
                             Ok(literal) => format_ident = literal.to_token_stream(),
                             Err(_) => {
                                 return derive_error!(
@@ -71,7 +80,13 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     .map(|letter| Ident::new(&letter.to_string(), variant.span()))
                     .collect::<Vec<_>>();
                 match_arms.extend(quote_spanned! {
-                    variant.span() => #name::#variant_name(#(#args),*) =>  write!(f, #format_ident, #(#args),*),
+                    variant.span() =>
+                        #name::#variant_name(#(#args),*) =>  write!(f, #format_ident, #(#args),*),
+                });
+
+                template_arms.extend(quote_spanned! {
+                    variant.span() =>
+                        #name::#variant_name(..) => #format_ident.to_string(),
                 });
             }
             _ => {
@@ -87,6 +102,14 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 match self {
                     #match_arms
+                }
+            }
+        }
+
+        impl #name {
+            pub fn template(&self) -> String {
+                match self {
+                    #template_arms
                 }
             }
         }
