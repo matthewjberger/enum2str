@@ -69,19 +69,22 @@ fn nested_template() {
 }
 
 #[test]
-fn unit_number_of_args() {
-    assert_eq!(Color::Green.number_of_args(), 0);
+fn unit_args() {
+    assert_eq!(Color::Green.arguments().len(), 0);
 }
 
 #[test]
-fn unnamed_number_of_args() {
-    assert_eq!(Object::Generic("Hello!".to_string()).number_of_args(), 1);
-}
-
-#[test]
-fn complex_number_of_args() {
+fn unnamed_args() {
     assert_eq!(
-        Object::Complex(Color::Green, Shape::Circle(2)).number_of_args(),
-        2
+        Object::Generic("Hello!".to_string()).arguments(),
+        vec!["Hello!".to_string()]
+    );
+}
+
+#[test]
+fn complex_args() {
+    assert_eq!(
+        Object::Complex(Color::Green, Shape::Circle(2)).arguments(),
+        vec!["Green", "Circle with radius: 2"],
     );
 }

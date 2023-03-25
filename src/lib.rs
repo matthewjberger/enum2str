@@ -62,7 +62,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
 
                 arg_arms.extend(quote_spanned! {
                     variant.span() =>
-                        #name::#variant_name => 0,
+                        #name::#variant_name => vec![],
                 });
             }
             Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
@@ -98,7 +98,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
 
                 arg_arms.extend(quote_spanned! {
                     variant.span() =>
-                        #name::#variant_name(..) => #fields,
+                        #name::#variant_name(#(#args),*) => vec![#(#args.to_string()),*],
                 });
             }
             _ => {
@@ -125,7 +125,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                 }
             }
 
-            pub fn number_of_args(&self) -> usize {
+            pub fn arguments(&self) -> Vec<String> {
                 match self {
                     #arg_arms
                 }
