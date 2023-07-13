@@ -88,3 +88,24 @@ fn complex_args() {
         vec!["Green", "Circle with radius: 2"],
     );
 }
+
+#[derive(EnumStr)]
+enum SpecialEnum {
+    #[enum2str("SomeString")]
+    SomeString(u32),
+}
+
+#[test]
+fn special_string() {
+    assert_eq!(SpecialEnum::SomeString(100).to_string(), "SomeString");
+}
+
+#[test]
+fn special_template() {
+    assert_eq!(SpecialEnum::SomeString(100).template(), "SomeString");
+}
+
+#[test]
+fn special_args() {
+    assert_eq!(SpecialEnum::SomeString(100).arguments().len(), 0);
+}

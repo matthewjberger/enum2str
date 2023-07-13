@@ -81,25 +81,42 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     }
                 }
 
-                let fields = unnamed.iter().len();
-                let args = ('a'..='z')
-                    .take(fields)
-                    .map(|letter| Ident::new(&letter.to_string(), variant.span()))
-                    .collect::<Vec<_>>();
-                match_arms.extend(quote_spanned! {
-                    variant.span() =>
-                        #name::#variant_name(#(#args),*) => write!(f, #format_ident, #(#args),*),
-                });
+                if format_ident.to_string().contains("{}") {
+                    let fields = unnamed.iter().len();
+                    let args = ('a'..='z')
+                        .take(fields)
+                        .map(|letter| Ident::new(&letter.to_string(), variant.span()))
+                        .collect::<Vec<_>>();
+                    match_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name(#(#args),*) => write!(f, #format_ident, #(#args),*),
+                    });
 
-                template_arms.extend(quote_spanned! {
-                    variant.span() =>
-                        #name::#variant_name(..) => #format_ident.to_string(),
-                });
+                    template_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name(..) => #format_ident.to_string(),
+                    });
 
-                arg_arms.extend(quote_spanned! {
-                    variant.span() =>
-                        #name::#variant_name(#(#args),*) => vec![#(#args.to_string()),*],
-                });
+                    arg_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name(#(#args),*) => vec![#(#args.to_string()),*],
+                    });
+                } else {
+                    match_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name(..) => write!(f, #format_ident),
+                    });
+
+                    template_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name(..) => #format_ident.to_string(),
+                    });
+
+                    arg_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name(..) => vec![],
+                    });
+                }
             }
             _ => {
                 return derive_error!(

@@ -12,7 +12,7 @@ This is useful for strongly typing composable sets of strings.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.6"
+enum2str = "0.1.7"
 ```
 
 Example:
@@ -26,6 +26,10 @@ enum Object {
 
     #[enum2str("Color: {}. Shape: {}.")]
     Complex(Color, Shape),
+
+    // Variant fields can be ignored
+    #[enum2str("Material")]
+    Material(Color),
 }
 
 #[derive(EnumStr)]
