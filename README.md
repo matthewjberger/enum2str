@@ -12,7 +12,7 @@ This is useful for strongly typing composable sets of strings.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.7"
+enum2str = "0.1.8"
 ```
 
 Example:
@@ -38,6 +38,23 @@ enum Color {
 
     #[enum2str("Burgundy")]
     Red,
+
+    Blue {
+        _hue: u8,
+    },
+
+    #[enum2str("Custom Color")]
+    Custom {
+        _red: u8,
+        _green: u8,
+        _blue: u8,
+    },
+
+    #[enum2str("Unique - {label}_{id}")]
+    Unique {
+        id: u8,
+        label: String,
+    },
 }
 
 #[derive(EnumStr)]
@@ -110,6 +127,36 @@ fn complex_args() {
     assert_eq!(
         Object::Complex(Color::Green, Shape::Circle(2)).arguments(),
         vec!["Green", "Circle with radius: 2"],
+    );
+}
+
+#[test]
+fn plain_to_string() {
+    assert_eq!(Color::Blue { _hue: 3 }.to_string(), "Blue");
+}
+
+#[test]
+fn unique_to_string() {
+    assert_eq!(
+        Color::Unique {
+            label: "unique_color".to_string(),
+            id: 3
+        }
+        .to_string(),
+        "Unique - unique_color_3",
+    );
+}
+
+#[test]
+fn custom_args() {
+    assert_eq!(
+        Color::Unique {
+            label: "unique_color".to_string(),
+            id: 3
+        }
+        .arguments()
+        .len(),
+        2
     );
 }
 ```
