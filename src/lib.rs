@@ -2,7 +2,8 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, FieldsUnnamed, LitStr,
+    parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, FieldsNamed,
+    FieldsUnnamed, LitStr,
 };
 
 macro_rules! derive_error {
@@ -31,7 +32,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     for variant in data.variants.iter() {
         let variant_name = &variant.ident;
 
-        match variant.fields {
+        match &variant.fields {
             Fields::Unit => {
                 let mut display_ident = variant_name.to_string().to_token_stream();
 
@@ -118,10 +119,94 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     });
                 }
             }
-            _ => {
-                return derive_error!(
-                    "enum2str is only implemented for unit and unnamed-field enums"
-                )
+            Fields::Named(FieldsNamed { named, .. }) => {
+                let mut format_ident = "{}".to_string().to_token_stream();
+                let mut field_idents = Vec::new();
+
+                let mut has_attribute = false;
+                for attr in &variant.attrs {
+                    if attr.path.is_ident("enum2str") {
+                        has_attribute = true;
+                        match attr.parse_args::<LitStr>() {
+                            Ok(literal) => {
+                                format_ident = literal.clone().to_token_stream();
+                                let literal_str = literal.value().clone();
+                                let mut start_indices =
+                                    literal_str.match_indices('{').map(|(i, _)| i);
+                                let mut end_indices =
+                                    literal_str.match_indices('}').map(|(i, _)| i);
+
+                                while let (Some(start), Some(end)) =
+                                    (start_indices.next(), end_indices.next())
+                                {
+                                    let field_name = &literal_str[(start + 1)..end];
+                                    field_idents.push(Ident::new(field_name, Span::call_site()));
+                                }
+                            }
+                            Err(_) => {
+                                return derive_error!(
+                                    r#"The 'enum2str' attribute is missing a String argument. Example: #[enum2str("Listening on: {} {}")] "#
+                                );
+                            }
+                        }
+                    }
+                }
+
+                let field_names = named
+                    .iter()
+                    .map(|f| f.ident.as_ref().unwrap())
+                    .collect::<Vec<_>>();
+
+                if !field_idents.is_empty() {
+                    let arg_pattern = field_idents
+                        .iter()
+                        .map(|ident| quote!(#ident = #ident))
+                        .collect::<Vec<_>>();
+
+                    match_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name { #(#field_names),* } => write!(f, #format_ident, #(#arg_pattern),*),
+                    });
+
+                    template_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name { .. } => #format_ident.to_string(),
+                    });
+
+                    arg_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name { #(#field_names),* } => vec![#(#field_idents.to_string()),*],
+                    });
+                } else {
+                    if has_attribute {
+                        match_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name { .. } => write!(f, "{}", #format_ident.to_string()),
+                    });
+                    } else {
+                        match_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name { .. } => write!(f, "{}", stringify!(#variant_name)),
+                    });
+                    }
+
+                    if has_attribute {
+                        template_arms.extend(quote_spanned! {
+                            variant.span() =>
+                                #name::#variant_name { .. } => #format_ident.to_string(),
+                        });
+                    } else {
+                        template_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name { .. } => stringify!(#variant_name).to_string(),
+                        });
+                    }
+
+                    arg_arms.extend(quote_spanned! {
+                        variant.span() =>
+                            #name::#variant_name { .. } => vec![],
+                    });
+                }
             }
         };
     }

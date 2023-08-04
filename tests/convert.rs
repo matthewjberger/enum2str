@@ -14,12 +14,59 @@ enum Color {
 
     #[enum2str("Burgundy")]
     Red,
+
+    Blue {
+        _hue: u8,
+    },
+
+    #[enum2str("Custom Color")]
+    Custom {
+        _red: u8,
+        _green: u8,
+        _blue: u8,
+    },
+
+    #[enum2str("Unique - {label}_{id}")]
+    Unique {
+        id: u8,
+        label: String,
+    },
 }
 
 #[derive(EnumStr)]
 enum Shape {
     #[enum2str("Circle with radius: {}")]
     Circle(u8),
+}
+
+#[test]
+fn plain_to_string() {
+    assert_eq!(Color::Blue { _hue: 3 }.to_string(), "Blue");
+}
+
+#[test]
+fn custom_to_string() {
+    assert_eq!(
+        Color::Custom {
+            _red: 8,
+            _green: 7,
+            _blue: 6
+        }
+        .to_string(),
+        "Custom Color"
+    );
+}
+
+#[test]
+fn unique_to_string() {
+    assert_eq!(
+        Color::Unique {
+            label: "unique_color".to_string(),
+            id: 3
+        }
+        .to_string(),
+        "Unique - unique_color_3",
+    );
 }
 
 #[test]
@@ -42,6 +89,19 @@ fn nested_to_string() {
     assert_eq!(
         Object::Complex(Color::Green, Shape::Circle(2)).to_string(),
         "Color: Green. Shape: Circle with radius: 2."
+    );
+}
+
+#[test]
+fn custom_template() {
+    assert_eq!(
+        Color::Custom {
+            _red: 1,
+            _green: 2,
+            _blue: 3
+        }
+        .template(),
+        "Custom Color"
     );
 }
 
@@ -78,6 +138,19 @@ fn unnamed_args() {
     assert_eq!(
         Object::Generic("Hello!".to_string()).arguments(),
         vec!["Hello!".to_string()]
+    );
+}
+
+#[test]
+fn custom_args() {
+    assert_eq!(
+        Color::Unique {
+            label: "unique_color".to_string(),
+            id: 3
+        }
+        .arguments()
+        .len(),
+        2
     );
 }
 
