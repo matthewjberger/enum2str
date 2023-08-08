@@ -26,6 +26,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     };
 
     let mut match_arms = TokenStream2::new();
+    let mut variant_names = TokenStream2::new();
     let mut template_arms = TokenStream2::new();
     let mut arg_arms = TokenStream2::new();
 
@@ -59,6 +60,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                 template_arms.extend(quote_spanned! {
                     variant.span() =>
                         #name::#variant_name => #display_ident.to_string(),
+                });
+
+                variant_names.extend(quote_spanned! {
+                    variant.span() =>
+                        stringify!(#variant_name).to_string(),
                 });
 
                 arg_arms.extend(quote_spanned! {
@@ -98,6 +104,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                             #name::#variant_name(..) => #format_ident.to_string(),
                     });
 
+                    variant_names.extend(quote_spanned! {
+                        variant.span() =>
+                            stringify!(#variant_name).to_string(),
+                    });
+
                     arg_arms.extend(quote_spanned! {
                         variant.span() =>
                             #name::#variant_name(#(#args),*) => vec![#(#args.to_string()),*],
@@ -106,6 +117,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     match_arms.extend(quote_spanned! {
                         variant.span() =>
                             #name::#variant_name(..) => write!(f, #format_ident),
+                    });
+
+                    variant_names.extend(quote_spanned! {
+                        variant.span() =>
+                            stringify!(#variant_name).to_string(),
                     });
 
                     template_arms.extend(quote_spanned! {
@@ -173,6 +189,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                             #name::#variant_name { .. } => #format_ident.to_string(),
                     });
 
+                    variant_names.extend(quote_spanned! {
+                        variant.span() =>
+                            stringify!(#variant_name).to_string(),
+                    });
+
                     arg_arms.extend(quote_spanned! {
                         variant.span() =>
                             #name::#variant_name { #(#field_names),* } => vec![#(#field_idents.to_string()),*],
@@ -206,6 +227,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                         variant.span() =>
                             #name::#variant_name { .. } => vec![],
                     });
+
+                    variant_names.extend(quote_spanned! {
+                        variant.span() =>
+                            stringify!(#variant_name).to_string(),
+                    });
                 }
             }
         };
@@ -221,6 +247,12 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
         }
 
         impl #name {
+            pub fn variant_names() -> Vec<String> {
+                vec![
+                    #variant_names
+                ]
+            }
+
             pub fn template(&self) -> String {
                 match self {
                     #template_arms

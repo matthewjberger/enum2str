@@ -40,6 +40,28 @@ enum Shape {
 }
 
 #[test]
+fn color_variant_names() {
+    assert_eq!(
+        Color::variant_names(),
+        vec![
+            "Green".to_string(),
+            "Red".to_string(),
+            "Blue".to_string(),
+            "Custom".to_string(),
+            "Unique".to_string(),
+        ]
+    );
+}
+
+#[test]
+fn object_variant_names() {
+    assert_eq!(
+        Object::variant_names(),
+        vec!["Generic".to_string(), "Complex".to_string()]
+    );
+}
+
+#[test]
 fn plain_to_string() {
     assert_eq!(Color::Blue { _hue: 3 }.to_string(), "Blue");
 }

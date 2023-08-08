@@ -12,7 +12,7 @@ This is useful for strongly typing composable sets of strings.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.8"
+enum2str = "0.1.9"
 ```
 
 Example:
@@ -61,6 +61,20 @@ enum Color {
 enum Shape {
     #[enum2str("Circle with radius: {}")]
     Circle(u8),
+}
+
+#[test]
+fn color_variant_names() {
+    assert_eq!(
+        Color::variant_names(),
+        vec![
+            "Green".to_string(),
+            "Red".to_string(),
+            "Blue".to_string(),
+            "Custom".to_string(),
+            "Unique".to_string(),
+        ]
+    );
 }
 
 #[test]
