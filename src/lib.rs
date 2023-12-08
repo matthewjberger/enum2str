@@ -1,3 +1,13 @@
+//! enum2str is a rust derive macro that creates a Display impl for enums.
+//! This is useful for strongly typing composable sets of strings.
+//! ## Usage
+//!
+//! Add this to your `Cargo.toml`:
+//!
+//! ```toml
+//! enum2str = "0.1.9"
+//! ```
+
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{quote, quote_spanned, ToTokens};
@@ -247,18 +257,21 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
         }
 
         impl #name {
+            /// Get the names of this enum's variants
             pub fn variant_names() -> Vec<String> {
                 vec![
                     #variant_names
                 ]
             }
 
+            /// Get the format specifier used to display a variant
             pub fn template(&self) -> String {
                 match self {
                     #template_arms
                 }
             }
 
+            /// Gets the names of a variant's arguments
             pub fn arguments(&self) -> Vec<String> {
                 match self {
                     #arg_arms
