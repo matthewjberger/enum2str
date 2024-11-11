@@ -1,9 +1,9 @@
 [package]
 name = "enum2str"
-version = "0.1.10"
+version = "0.1.11"
 authors = ["Matthew Berger <matthewjordanberger@gmail.com>"]
 description = """
-enum2str is a rust derive macro that creates a Display impl for enums. 
+enum2str is a rust derive macro that creates a Display impl for enums.
 This is useful for strongly typing composable sets of strings.
 """
 homepage = "https://github.com/matthewjberger/enum2str"

@@ -1,4 +1,4 @@
-//! enum2str is a rust derive macro that creates a Display impl for enums.
+//! enum2str is a rust derive macro that creates Display and FromStr impls for enums.
 //! This is useful for strongly typing composable sets of strings.
 //! ## Usage
 //!
@@ -27,7 +27,6 @@ macro_rules! derive_error {
 #[proc_macro_derive(EnumStr, attributes(enum2str))]
 pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input as DeriveInput);
-
     let name = &input.ident;
 
     let data = match input.data {
@@ -39,6 +38,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     let mut variant_names = TokenStream2::new();
     let mut template_arms = TokenStream2::new();
     let mut arg_arms = TokenStream2::new();
+    let mut from_str_arms = TokenStream2::new();
 
     for variant in data.variants.iter() {
         let variant_name = &variant.ident;
@@ -46,12 +46,14 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
         match &variant.fields {
             Fields::Unit => {
                 let mut display_ident = variant_name.to_string().to_token_stream();
+                let mut from_str_pattern = variant_name.to_string();
 
                 for attr in &variant.attrs {
                     if attr.path.is_ident("enum2str") && attr.path.segments.first().is_some() {
                         match attr.parse_args::<syn::LitStr>() {
                             Ok(literal) => {
                                 display_ident = literal.to_token_stream();
+                                from_str_pattern = literal.value();
                             }
                             Err(_) => {
                                 return derive_error!(
@@ -80,6 +82,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                 arg_arms.extend(quote_spanned! {
                     variant.span() =>
                         #name::#variant_name => vec![],
+                });
+
+                from_str_arms.extend(quote_spanned! {
+                    variant.span() =>
+                        s if s == #from_str_pattern => Ok(#name::#variant_name),
                 });
             }
             Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
@@ -146,7 +153,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                 }
             }
             Fields::Named(FieldsNamed { named, .. }) => {
-                let mut format_ident = "{}".to_string().to_token_stream();
+                let mut format_ident = variant_name.to_string().to_token_stream();
                 let mut field_idents = Vec::new();
 
                 let mut has_attribute = false;
@@ -178,12 +185,10 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     }
                 }
 
-                let field_names = named
-                    .iter()
-                    .map(|f| f.ident.as_ref().unwrap())
-                    .collect::<Vec<_>>();
+                let field_names: Vec<_> = named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
 
                 if !field_idents.is_empty() {
+                    // Use named arguments in format string
                     let arg_pattern = field_idents
                         .iter()
                         .map(|ident| quote!(#ident = #ident))
@@ -194,53 +199,39 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                             #name::#variant_name { #(#field_names),* } => write!(f, #format_ident, #(#arg_pattern),*),
                     });
 
-                    template_arms.extend(quote_spanned! {
-                        variant.span() =>
-                            #name::#variant_name { .. } => #format_ident.to_string(),
-                    });
-
-                    variant_names.extend(quote_spanned! {
-                        variant.span() =>
-                            stringify!(#variant_name).to_string(),
-                    });
-
                     arg_arms.extend(quote_spanned! {
                         variant.span() =>
-                            #name::#variant_name { #(#field_names),* } => vec![#(#field_idents.to_string()),*],
+                            #name::#variant_name { #(#field_names),* } => vec![#(#field_names.to_string()),*],
                     });
                 } else {
-                    if has_attribute {
-                        match_arms.extend(quote_spanned! {
+                    // Just use variant name or custom string
+                    match_arms.extend(quote_spanned! {
                         variant.span() =>
-                            #name::#variant_name { .. } => write!(f, "{}", #format_ident.to_string()),
+                            #name::#variant_name { .. } => write!(f, "{}", if #has_attribute { #format_ident.to_string() } else { stringify!(#variant_name).to_string() }),
                     });
-                    } else {
-                        match_arms.extend(quote_spanned! {
-                        variant.span() =>
-                            #name::#variant_name { .. } => write!(f, "{}", stringify!(#variant_name)),
-                    });
-                    }
-
-                    if has_attribute {
-                        template_arms.extend(quote_spanned! {
-                            variant.span() =>
-                                #name::#variant_name { .. } => #format_ident.to_string(),
-                        });
-                    } else {
-                        template_arms.extend(quote_spanned! {
-                        variant.span() =>
-                            #name::#variant_name { .. } => stringify!(#variant_name).to_string(),
-                        });
-                    }
 
                     arg_arms.extend(quote_spanned! {
                         variant.span() =>
                             #name::#variant_name { .. } => vec![],
                     });
+                }
 
-                    variant_names.extend(quote_spanned! {
+                template_arms.extend(quote_spanned! {
+                    variant.span() =>
+                        #name::#variant_name { .. } => #format_ident.to_string(),
+                });
+
+                variant_names.extend(quote_spanned! {
+                    variant.span() =>
+                        stringify!(#variant_name).to_string(),
+                });
+
+                // Add FromStr only for unit variants
+                if field_names.is_empty() && has_attribute {
+                    let display_str = format_ident.to_string();
+                    from_str_arms.extend(quote_spanned! {
                         variant.span() =>
-                            stringify!(#variant_name).to_string(),
+                            s if s == #display_str => Ok(#name::#variant_name { }),
                     });
                 }
             }
@@ -252,6 +243,17 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 match self {
                     #match_arms
+                }
+            }
+        }
+
+        impl core::str::FromStr for #name {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s {
+                    #from_str_arms
+                    _ => Err(format!("Invalid {} variant: {}", stringify!(#name), s))
                 }
             }
         }

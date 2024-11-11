@@ -4,7 +4,7 @@
 [<img alt="crates.io" src="https://img.shields.io/crates/v/enum2str.svg?style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/enum2str)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-enum2str-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/enum2str)
 
-enum2str is a rust derive macro that creates a Display impl for enums. 
+enum2str is a rust derive macro that creates a Display impl for enums.
 This is useful for strongly typing composable sets of strings.
 
 ## Usage
@@ -12,7 +12,7 @@ This is useful for strongly typing composable sets of strings.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.10"
+enum2str = "0.1.11"
 ```
 
 Example:

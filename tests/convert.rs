@@ -8,7 +8,7 @@ enum Object {
     Complex(Color, Shape),
 }
 
-#[derive(EnumStr)]
+#[derive(EnumStr, Debug, PartialEq)]
 enum Color {
     Green,
 
@@ -184,23 +184,36 @@ fn complex_args() {
     );
 }
 
-#[derive(EnumStr)]
+#[derive(EnumStr, Debug, PartialEq, Eq)]
 enum SpecialEnum {
+    #[allow(unused)]
     #[enum2str("SomeString")]
-    SomeString(u32),
+    SomeValue(u32),
 }
 
 #[test]
 fn special_string() {
-    assert_eq!(SpecialEnum::SomeString(100).to_string(), "SomeString");
+    assert_eq!(SpecialEnum::SomeValue(100).to_string(), "SomeString");
 }
 
 #[test]
 fn special_template() {
-    assert_eq!(SpecialEnum::SomeString(100).template(), "SomeString");
+    assert_eq!(SpecialEnum::SomeValue(100).template(), "SomeString");
 }
 
 #[test]
 fn special_args() {
-    assert_eq!(SpecialEnum::SomeString(100).arguments().len(), 0);
+    assert_eq!(SpecialEnum::SomeValue(100).arguments().len(), 0);
+}
+
+#[test]
+fn test_from_str() {
+    use std::str::FromStr;
+    assert_eq!(
+        Color::from_str(&Color::Green.to_string()).unwrap(),
+        Color::Green
+    );
+    assert_eq!(Color::from_str("Burgundy").unwrap(), Color::Red);
+    assert!(SpecialEnum::from_str(&SpecialEnum::SomeValue(1).to_string()).is_err());
+    assert!(Color::from_str("NotAColor").is_err());
 }
