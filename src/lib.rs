@@ -5,7 +5,7 @@
 //! Add this to your `Cargo.toml`:
 //!
 //! ```toml
-//! enum2str = "0.1.9"
+//! enum2str = "0.1.11"
 //! ```
 
 use proc_macro::TokenStream;
