@@ -218,6 +218,7 @@ fn test_from_str() {
     assert!(Color::from_str("NotAColor").is_err());
 }
 
+#[cfg(feature = "try_from_string")]
 #[test]
 fn test_try_from_string() {
     use std::{convert::TryFrom, str::FromStr};
@@ -242,6 +243,7 @@ fn test_try_from_string() {
     assert!(UnitOnly::try_from("Invalid".to_string()).is_err());
 }
 
+#[cfg(feature = "try_from_string")]
 #[test]
 fn test_try_from_string_duplicates() {
     use std::{convert::TryFrom, str::FromStr};

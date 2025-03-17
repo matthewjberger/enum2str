@@ -1,6 +1,6 @@
 [package]
 name = "enum2str"
-version = "0.1.12"
+version = "0.1.13"
 authors = ["Matthew Berger <matthewjordanberger@gmail.com>"]
 description = """
 enum2str is a rust derive macro that creates a Display impl for enums.
@@ -19,3 +19,6 @@ proc-macro = true
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = "1.0"
+
+[features]
+try_from_string = []

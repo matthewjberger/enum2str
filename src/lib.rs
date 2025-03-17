@@ -1,11 +1,20 @@
 //! enum2str is a rust derive macro that creates Display and FromStr impls for enums.
 //! This is useful for strongly typing composable sets of strings.
+//!
+//! ## Features
+//!
+//! - `try_from_string` (optional): Enables `TryFrom<String>` implementation for enums with only unit variants.
+//!   This feature is not enabled by default. To enable it, use:
+//!   ```toml
+//!   enum2str = { version = "0.1.13", features = ["try_from_string"] }
+//!   ```
+//!
 //! ## Usage
 //!
 //! Add this to your `Cargo.toml`:
 //!
 //! ```toml
-//! enum2str = "0.1.11"
+//! enum2str = "0.1.13"
 //! ```
 
 use proc_macro::TokenStream;
@@ -325,10 +334,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
         let try_from_impl = if duplicates.is_empty() {
             // Simple implementation when no duplicates
             quote! {
-                impl core::convert::TryFrom<String> for #name {
-                    type Error = String;
+                #[cfg(feature = "try_from_string")]
+                impl std::convert::TryFrom<std::string::String> for #name {
+                    type Error = std::string::String;
 
-                    fn try_from(value: String) -> Result<Self, Self::Error> {
+                    fn try_from(value: std::string::String) -> Result<Self, Self::Error> {
                         Self::from_str(&value)
                     }
                 }
@@ -347,10 +357,11 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
             let duplicate_strings: Vec<_> = duplicates.iter().map(|(s, _)| s).collect();
 
             quote! {
-                impl core::convert::TryFrom<String> for #name {
-                    type Error = String;
+                #[cfg(feature = "try_from_string")]
+                impl std::convert::TryFrom<std::string::String> for #name {
+                    type Error = std::string::String;
 
-                    fn try_from(value: String) -> Result<Self, Self::Error> {
+                    fn try_from(value: std::string::String) -> Result<Self, Self::Error> {
                         // First check if this is an ambiguous string
                         if [#(#duplicate_strings),*].contains(&value.as_str()) {
                             return Err(#error_msg.to_string());
