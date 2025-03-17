@@ -217,3 +217,53 @@ fn test_from_str() {
     assert!(SpecialEnum::from_str(&SpecialEnum::SomeValue(1).to_string()).is_err());
     assert!(Color::from_str("NotAColor").is_err());
 }
+
+#[test]
+fn test_try_from_string() {
+    use std::{convert::TryFrom, str::FromStr};
+
+    // Test with a unit-only enum
+    #[derive(EnumStr, Debug, PartialEq)]
+    enum UnitOnly {
+        #[enum2str("First")]
+        One,
+        #[enum2str("Second")]
+        Two,
+    }
+
+    assert_eq!(
+        UnitOnly::try_from("First".to_string()).unwrap(),
+        UnitOnly::One
+    );
+    assert_eq!(
+        UnitOnly::try_from("Second".to_string()).unwrap(),
+        UnitOnly::Two
+    );
+    assert!(UnitOnly::try_from("Invalid".to_string()).is_err());
+}
+
+#[test]
+fn test_try_from_string_duplicates() {
+    use std::{convert::TryFrom, str::FromStr};
+
+    #[derive(EnumStr, Debug, PartialEq)]
+    enum DuplicateStrings {
+        #[enum2str("Same")]
+        One,
+        #[enum2str("Same")]
+        Two,
+        #[enum2str("Unique")]
+        Three,
+    }
+
+    // Test that unique strings work
+    assert_eq!(
+        DuplicateStrings::try_from("Unique".to_string()).unwrap(),
+        DuplicateStrings::Three
+    );
+
+    // Test that ambiguous strings fail with the correct error
+    let err = DuplicateStrings::try_from("Same".to_string()).unwrap_err();
+    assert!(err.contains("Ambiguous string representation"));
+    assert!(err.contains("'Same' (used by One, Two)"));
+}

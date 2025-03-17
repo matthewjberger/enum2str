@@ -24,6 +24,42 @@ macro_rules! derive_error {
     };
 }
 
+fn has_only_unit_variants(data: &syn::DataEnum) -> bool {
+    data.variants
+        .iter()
+        .all(|variant| matches!(variant.fields, Fields::Unit))
+}
+
+fn find_duplicate_strings(data: &syn::DataEnum) -> Vec<(String, Vec<String>)> {
+    let mut string_to_variants = std::collections::HashMap::new();
+
+    for variant in data.variants.iter() {
+        if let Fields::Unit = variant.fields {
+            let mut string = variant.ident.to_string();
+            let variant_name = variant.ident.to_string();
+
+            // Check for enum2str attribute
+            for attr in &variant.attrs {
+                if attr.path.is_ident("enum2str") {
+                    if let Ok(literal) = attr.parse_args::<syn::LitStr>() {
+                        string = literal.value();
+                    }
+                }
+            }
+
+            string_to_variants
+                .entry(string)
+                .or_insert_with(Vec::new)
+                .push(variant_name);
+        }
+    }
+
+    string_to_variants
+        .into_iter()
+        .filter(|(_, variants)| variants.len() > 1)
+        .collect()
+}
+
 #[proc_macro_derive(EnumStr, attributes(enum2str))]
 pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input as DeriveInput);
@@ -226,7 +262,6 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                         stringify!(#variant_name).to_string(),
                 });
 
-                // Add FromStr only for unit variants
                 if field_names.is_empty() && has_attribute {
                     let display_str = format_ident.to_string();
                     from_str_arms.extend(quote_spanned! {
@@ -282,5 +317,52 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
         }
     };
 
-    TokenStream::from(expanded)
+    let mut expanded = TokenStream::from(expanded);
+
+    // Add TryFrom<String> implementation for enums with only unit variants
+    if has_only_unit_variants(&data) {
+        let duplicates = find_duplicate_strings(&data);
+        let try_from_impl = if duplicates.is_empty() {
+            // Simple implementation when no duplicates
+            quote! {
+                impl core::convert::TryFrom<String> for #name {
+                    type Error = String;
+
+                    fn try_from(value: String) -> Result<Self, Self::Error> {
+                        Self::from_str(&value)
+                    }
+                }
+            }
+        } else {
+            // Implementation that handles duplicates
+            let error_msg = format!(
+                "Ambiguous string representation. The following strings are used by multiple variants: {}",
+                duplicates
+                    .iter()
+                    .map(|(s, v)| format!("'{}' (used by {})", s, v.join(", ")))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+
+            let duplicate_strings: Vec<_> = duplicates.iter().map(|(s, _)| s).collect();
+
+            quote! {
+                impl core::convert::TryFrom<String> for #name {
+                    type Error = String;
+
+                    fn try_from(value: String) -> Result<Self, Self::Error> {
+                        // First check if this is an ambiguous string
+                        if [#(#duplicate_strings),*].contains(&value.as_str()) {
+                            return Err(#error_msg.to_string());
+                        }
+                        // If not ambiguous, try normal conversion
+                        Self::from_str(&value)
+                    }
+                }
+            }
+        };
+        expanded.extend(TokenStream::from(try_from_impl));
+    }
+
+    expanded
 }
