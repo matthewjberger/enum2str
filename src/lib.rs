@@ -6,7 +6,7 @@
 //! - `try_from_string` (optional): Enables `TryFrom<String>` implementation for enums with only unit variants.
 //!   This feature is not enabled by default. To enable it, use:
 //!   ```toml
-//!   enum2str = { version = "0.1.14", features = ["try_from_string"] }
+//!   enum2str = { version = "0.1.16", features = ["try_from_string"] }
 //!   ```
 //!
 //! ## Usage
@@ -14,7 +14,7 @@
 //! Add this to your `Cargo.toml`:
 //!
 //! ```toml
-//! enum2str = "0.1.14"
+//! enum2str = "0.1.16"
 //! ```
 
 use proc_macro::TokenStream;
@@ -334,45 +334,86 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     #[cfg(feature = "try_from_string")]
     if has_only_unit_variants(&data) {
         let duplicates = find_duplicate_strings(&data);
-        let try_from_impl = if duplicates.is_empty() {
-            // Simple implementation when no duplicates
-            quote! {
-                impl std::convert::TryFrom<std::string::String> for #name {
-                    type Error = std::string::String;
+        let has_error_variant = data.variants.iter().any(|v| v.ident == "Error");
 
-                    fn try_from(value: std::string::String) -> Result<Self, Self::Error> {
-                        Self::from_str(&value)
+        let try_from_impl = if has_error_variant {
+            if duplicates.is_empty() {
+                quote! {
+                    impl std::convert::TryFrom<std::string::String> for #name {
+                        type Error = std::string::String;
+
+                        fn try_from(value: std::string::String) -> std::result::Result<Self, std::string::String> {
+                            use std::str::FromStr;
+                            FromStr::from_str(&value)
+                        }
+                    }
+                }
+            } else {
+                let error_msg = format!(
+                    "Ambiguous string representation. The following strings are used by multiple variants: {}",
+                    duplicates
+                        .iter()
+                        .map(|(s, v)| format!("'{}' (used by {})", s, v.join(", ")))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+
+                let duplicate_strings: Vec<_> = duplicates.iter().map(|(s, _)| s).collect();
+
+                quote! {
+                    impl std::convert::TryFrom<std::string::String> for #name {
+                        type Error = std::string::String;
+
+                        fn try_from(value: std::string::String) -> std::result::Result<Self, std::string::String> {
+                            use std::str::FromStr;
+                            if [#(#duplicate_strings),*].contains(&value.as_str()) {
+                                return std::result::Result::Err(#error_msg.to_string());
+                            }
+                            FromStr::from_str(&value)
+                        }
                     }
                 }
             }
         } else {
-            // Implementation that handles duplicates
-            let error_msg = format!(
-                "Ambiguous string representation. The following strings are used by multiple variants: {}",
-                duplicates
-                    .iter()
-                    .map(|(s, v)| format!("'{}' (used by {})", s, v.join(", ")))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
+            if duplicates.is_empty() {
+                quote! {
+                    impl std::convert::TryFrom<std::string::String> for #name {
+                        type Error = std::string::String;
 
-            let duplicate_strings: Vec<_> = duplicates.iter().map(|(s, _)| s).collect();
-
-            quote! {
-                impl std::convert::TryFrom<std::string::String> for #name {
-                    type Error = std::string::String;
-
-                    fn try_from(value: std::string::String) -> std::result::Result<Self, std::string::String> {
-                        // First check if this is an ambiguous string
-                        if [#(#duplicate_strings),*].contains(&value.as_str()) {
-                            return std::result::Result::Err(#error_msg.to_string());
+                        fn try_from(value: std::string::String) -> std::result::Result<Self, Self::Error> {
+                            use std::str::FromStr;
+                            Self::from_str(&value)
                         }
-                        // If not ambiguous, try normal conversion
-                        <Self as std::str::FromStr>::from_str(&value)
+                    }
+                }
+            } else {
+                let error_msg = format!(
+                    "Ambiguous string representation. The following strings are used by multiple variants: {}",
+                    duplicates
+                        .iter()
+                        .map(|(s, v)| format!("'{}' (used by {})", s, v.join(", ")))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+
+                let duplicate_strings: Vec<_> = duplicates.iter().map(|(s, _)| s).collect();
+
+                quote! {
+                    impl std::convert::TryFrom<std::string::String> for #name {
+                        type Error = std::string::String;
+
+                        fn try_from(value: std::string::String) -> std::result::Result<Self, Self::Error> {
+                            use std::str::FromStr;
+                            if [#(#duplicate_strings),*].contains(&value.as_str()) {
+                                return std::result::Result::Err(#error_msg.to_string());
+                            }
+                            Self::from_str(&value)
+                        }
                     }
                 }
             }
         };
+
         expanded.extend(TokenStream::from(try_from_impl));
     }
 

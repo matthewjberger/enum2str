@@ -230,6 +230,7 @@ fn test_try_from_string() {
         One,
         #[enum2str("Second")]
         Two,
+        Error,
     }
 
     assert_eq!(
@@ -239,6 +240,10 @@ fn test_try_from_string() {
     assert_eq!(
         UnitOnly::try_from("Second".to_string()).unwrap(),
         UnitOnly::Two
+    );
+    assert_eq!(
+        UnitOnly::try_from("Error".to_string()).unwrap(),
+        UnitOnly::Error
     );
     assert!(UnitOnly::try_from("Invalid".to_string()).is_err());
 }
