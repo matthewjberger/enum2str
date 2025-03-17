@@ -6,14 +6,15 @@
 
 enum2str is a rust derive macro that creates a Display impl for enums.
 This is useful for strongly typing composable sets of strings.
+The crate emits no-std compatible code by default.
 
 ## Features
 
-- `try_from_string` (optional): Enables `TryFrom<String>` implementation for enums with only unit variants.
-  This feature is not enabled by default. To enable it, use:
+- `try_from_string`: Enables `TryFrom<String>` implementation for enums with only unit variants.
+  This feature is not enabled by default and requires `std`. To enable it, use:
 
   ```toml
-  enum2str = { version = "0.1.13", features = ["try_from_string"] }
+  enum2str = { version = "0.1.14", features = ["try_from_string"] }
   ```
 
 ## Usage
@@ -21,7 +22,7 @@ This is useful for strongly typing composable sets of strings.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.13"
+enum2str = "0.1.14"
 ```
 
 Example:

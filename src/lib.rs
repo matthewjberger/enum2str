@@ -6,7 +6,7 @@
 //! - `try_from_string` (optional): Enables `TryFrom<String>` implementation for enums with only unit variants.
 //!   This feature is not enabled by default. To enable it, use:
 //!   ```toml
-//!   enum2str = { version = "0.1.13", features = ["try_from_string"] }
+//!   enum2str = { version = "0.1.14", features = ["try_from_string"] }
 //!   ```
 //!
 //! ## Usage
@@ -14,7 +14,7 @@
 //! Add this to your `Cargo.toml`:
 //!
 //! ```toml
-//! enum2str = "0.1.13"
+//! enum2str = "0.1.14"
 //! ```
 
 use proc_macro::TokenStream;
@@ -33,12 +33,14 @@ macro_rules! derive_error {
     };
 }
 
+#[cfg(feature = "try_from_string")]
 fn has_only_unit_variants(data: &syn::DataEnum) -> bool {
     data.variants
         .iter()
         .all(|variant| matches!(variant.fields, Fields::Unit))
 }
 
+#[cfg(feature = "try_from_string")]
 fn find_duplicate_strings(data: &syn::DataEnum) -> Vec<(String, Vec<String>)> {
     let mut string_to_variants = std::collections::HashMap::new();
 
@@ -326,15 +328,16 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
         }
     };
 
+    #[allow(unused_mut)]
     let mut expanded = TokenStream::from(expanded);
 
     // Add TryFrom<String> implementation for enums with only unit variants
+    #[cfg(feature = "try_from_string")]
     if has_only_unit_variants(&data) {
         let duplicates = find_duplicate_strings(&data);
         let try_from_impl = if duplicates.is_empty() {
             // Simple implementation when no duplicates
             quote! {
-                #[cfg(feature = "try_from_string")]
                 impl std::convert::TryFrom<std::string::String> for #name {
                     type Error = std::string::String;
 
@@ -357,7 +360,6 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
             let duplicate_strings: Vec<_> = duplicates.iter().map(|(s, _)| s).collect();
 
             quote! {
-                #[cfg(feature = "try_from_string")]
                 impl std::convert::TryFrom<std::string::String> for #name {
                     type Error = std::string::String;
 
