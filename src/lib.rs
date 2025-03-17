@@ -293,13 +293,13 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl core::str::FromStr for #name {
-            type Err = String;
+        impl ::core::str::FromStr for #name {
+            type Err = std::string::String;
 
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
+            fn from_str(s: &str) -> std::result::Result<Self, std::string::String> {
                 match s {
                     #from_str_arms
-                    _ => Err(format!("Invalid {} variant: {}", stringify!(#name), s))
+                    _ => std::result::Result::Err(format!("Invalid {} variant: {}", stringify!(#name), s))
                 }
             }
         }
@@ -331,7 +331,6 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
     #[allow(unused_mut)]
     let mut expanded = TokenStream::from(expanded);
 
-    // Add TryFrom<String> implementation for enums with only unit variants
     #[cfg(feature = "try_from_string")]
     if has_only_unit_variants(&data) {
         let duplicates = find_duplicate_strings(&data);
@@ -363,13 +362,13 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                 impl std::convert::TryFrom<std::string::String> for #name {
                     type Error = std::string::String;
 
-                    fn try_from(value: std::string::String) -> Result<Self, Self::Error> {
+                    fn try_from(value: std::string::String) -> std::result::Result<Self, std::string::String> {
                         // First check if this is an ambiguous string
                         if [#(#duplicate_strings),*].contains(&value.as_str()) {
-                            return Err(#error_msg.to_string());
+                            return std::result::Result::Err(#error_msg.to_string());
                         }
                         // If not ambiguous, try normal conversion
-                        Self::from_str(&value)
+                        <Self as std::str::FromStr>::from_str(&value)
                     }
                 }
             }

@@ -246,8 +246,6 @@ fn test_try_from_string() {
 #[cfg(feature = "try_from_string")]
 #[test]
 fn test_try_from_string_duplicates() {
-    use std::{convert::TryFrom, str::FromStr};
-
     #[derive(EnumStr, Debug, PartialEq)]
     enum DuplicateStrings {
         #[enum2str("Same")]
@@ -256,6 +254,7 @@ fn test_try_from_string_duplicates() {
         Two,
         #[enum2str("Unique")]
         Three,
+        Error,
     }
 
     // Test that unique strings work

@@ -14,7 +14,7 @@ The crate emits no-std compatible code by default.
   This feature is not enabled by default and requires `std`. To enable it, use:
 
   ```toml
-  enum2str = { version = "0.1.14", features = ["try_from_string"] }
+  enum2str = { version = "0.1.15", features = ["try_from_string"] }
   ```
 
 ## Usage
@@ -22,8 +22,14 @@ The crate emits no-std compatible code by default.
 Add this to your `Cargo.toml`:
 
 ```toml
-enum2str = "0.1.14"
+enum2str = "0.1.15"
 ```
+
+## Changelog
+
+### 0.1.15
+
+- Fixed ambiguity issue with TryFrom implementation when enum has a variant named Error
 
 Example:
 
