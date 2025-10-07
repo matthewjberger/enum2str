@@ -1,3 +1,4 @@
+extern crate alloc;
 use enum2str::EnumStr;
 
 #[derive(EnumStr)]

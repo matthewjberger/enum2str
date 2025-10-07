@@ -1,10 +1,11 @@
 //! enum2str is a rust derive macro that creates Display and FromStr impls for enums.
 //! This is useful for strongly typing composable sets of strings.
+//! The crate is `no_std` compatible and uses `alloc` by default.
 //!
 //! ## Features
 //!
 //! - `try_from_string` (optional): Enables `TryFrom<String>` implementation for enums with only unit variants.
-//!   This feature is not enabled by default. To enable it, use:
+//!   This feature is not enabled by default and requires `std`. To enable it, use:
 //!   ```toml
 //!   enum2str = { version = "0.1.16", features = ["try_from_string"] }
 //!   ```
@@ -16,13 +17,19 @@
 //! ```toml
 //! enum2str = "0.1.16"
 //! ```
+//!
+//! For `no_std` environments, make sure you have `alloc` available:
+//!
+//! ```rust
+//! extern crate alloc;
+//! ```
 
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{ToTokens, quote, quote_spanned};
 use syn::{
-    parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Fields, FieldsNamed,
-    FieldsUnnamed, LitStr,
+    Data, DeriveInput, Error, Fields, FieldsNamed, FieldsUnnamed, LitStr, parse_macro_input,
+    spanned::Spanned,
 };
 
 macro_rules! derive_error {
@@ -136,7 +143,7 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                         s if s == #from_str_pattern => Ok(#name::#variant_name),
                 });
             }
-            Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
+            Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
                 let mut format_ident = "{}".to_string().to_token_stream();
 
                 for attr in &variant.attrs {
@@ -294,33 +301,33 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
         }
 
         impl ::core::str::FromStr for #name {
-            type Err = std::string::String;
+            type Err = ::alloc::string::String;
 
-            fn from_str(s: &str) -> std::result::Result<Self, std::string::String> {
+            fn from_str(s: &str) -> ::core::result::Result<Self, Self::Err> {
                 match s {
                     #from_str_arms
-                    _ => std::result::Result::Err(format!("Invalid {} variant: {}", stringify!(#name), s))
+                    _ => ::core::result::Result::Err(::alloc::format!("Invalid {} variant: {}", stringify!(#name), s))
                 }
             }
         }
 
         impl #name {
             /// Get the names of this enum's variants
-            pub fn variant_names() -> Vec<String> {
-                vec![
+            pub fn variant_names() -> ::alloc::vec::Vec<::alloc::string::String> {
+                ::alloc::vec![
                     #variant_names
                 ]
             }
 
             /// Get the format specifier used to display a variant
-            pub fn template(&self) -> String {
+            pub fn template(&self) -> ::alloc::string::String {
                 match self {
                     #template_arms
                 }
             }
 
             /// Gets the names of a variant's arguments
-            pub fn arguments(&self) -> Vec<String> {
+            pub fn arguments(&self) -> ::alloc::vec::Vec<::alloc::string::String> {
                 match self {
                     #arg_arms
                 }
@@ -342,8 +349,8 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     impl std::convert::TryFrom<std::string::String> for #name {
                         type Error = std::string::String;
 
-                        fn try_from(value: std::string::String) -> std::result::Result<Self, std::string::String> {
-                            use std::str::FromStr;
+                        fn try_from(value: std::string::String) -> Result<Self, std::string::String> {
+                            use core::str::FromStr;
                             FromStr::from_str(&value)
                         }
                     }
@@ -364,10 +371,10 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     impl std::convert::TryFrom<std::string::String> for #name {
                         type Error = std::string::String;
 
-                        fn try_from(value: std::string::String) -> std::result::Result<Self, std::string::String> {
-                            use std::str::FromStr;
+                        fn try_from(value: std::string::String) -> Result<Self, std::string::String> {
+                            use core::str::FromStr;
                             if [#(#duplicate_strings),*].contains(&value.as_str()) {
-                                return std::result::Result::Err(#error_msg.to_string());
+                                return Err(#error_msg.to_string());
                             }
                             FromStr::from_str(&value)
                         }
@@ -380,8 +387,8 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     impl std::convert::TryFrom<std::string::String> for #name {
                         type Error = std::string::String;
 
-                        fn try_from(value: std::string::String) -> std::result::Result<Self, Self::Error> {
-                            use std::str::FromStr;
+                        fn try_from(value: std::string::String) -> Result<Self, Self::Error> {
+                            use core::str::FromStr;
                             Self::from_str(&value)
                         }
                     }
@@ -402,10 +409,10 @@ pub fn derive_enum2str(input: TokenStream) -> TokenStream {
                     impl std::convert::TryFrom<std::string::String> for #name {
                         type Error = std::string::String;
 
-                        fn try_from(value: std::string::String) -> std::result::Result<Self, Self::Error> {
-                            use std::str::FromStr;
+                        fn try_from(value: std::string::String) -> Result<Self, Self::Error> {
+                            use core::str::FromStr;
                             if [#(#duplicate_strings),*].contains(&value.as_str()) {
-                                return std::result::Result::Err(#error_msg.to_string());
+                                return Err(#error_msg.to_string());
                             }
                             Self::from_str(&value)
                         }

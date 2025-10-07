@@ -6,7 +6,7 @@
 
 enum2str is a rust derive macro that creates a Display impl for enums.
 This is useful for strongly typing composable sets of strings.
-The crate emits no-std compatible code by default.
+The crate is `no_std` compatible and uses `alloc` by default.
 
 ## Features
 
@@ -23,6 +23,12 @@ Add this to your `Cargo.toml`:
 
 ```toml
 enum2str = "0.1.16"
+```
+
+For `no_std` environments, make sure you have `alloc` available:
+
+```rust
+extern crate alloc;
 ```
 
 ## Changelog
